@@ -1,24 +1,25 @@
 # Land Cover Classification on EuroSAT — CNN vs ResNet-50
 
-A systematic comparison of a baseline CNN and a fine-tuned ResNet-50 for 
-semantic land cover classification on the EuroSAT dataset (Sentinel-2 
-multispectral satellite imagery). This project was completed as part of 
+A systematic comparison of a baseline CNN and a fine-tuned ResNet-50 for
+semantic land cover classification on the EuroSAT dataset (Sentinel-2
+multispectral satellite imagery). This project was completed as part of
 an MSc module in Artificial Intelligence at the University of Leicester.
 
 ---
 
 ## Problem Statement
 
-Remote sensing image classification is a core task in earth observation, 
-with applications in flood mapping, deforestation monitoring, urban planning 
-and agricultural analysis. This project investigates how architectural 
-choices and transfer learning affect classification performance on 
+Remote sensing image classification is a core task in earth observation,
+with applications in flood mapping, deforestation monitoring, urban planning
+and agricultural analysis. This project investigates how architectural
+choices and transfer learning affect classification performance on
 multispectral satellite imagery across 10 land cover categories.
 
 **Key research questions:**
-- How does a fine-tuned pretrained ResNet-50 compare to a baseline CNN 
+
+- How does a fine-tuned pretrained ResNet-50 compare to a baseline CNN
   trained from scratch on EuroSAT?
-- How does freezing depth and learning rate scheduling affect convergence 
+- How does freezing depth and learning rate scheduling affect convergence
   and generalisation?
 - Where do each model's inductive biases succeed or fail at the class level?
 
@@ -26,27 +27,28 @@ multispectral satellite imagery across 10 land cover categories.
 
 ## Dataset
 
-**EuroSAT** — A benchmark dataset based on Sentinel-2 satellite imagery, 
+**EuroSAT** — A benchmark dataset based on Sentinel-2 satellite imagery,
 covering 10 land use and land cover classes across Europe.
 
-| Property        | Detail                        |
-|-----------------|-------------------------------|
-| Classes         | 10 (e.g. Forest, River, Highway, Industrial) |
-| Images          | 27,000 labelled RGB patches   |
-| Resolution      | 64 × 64 pixels per image      |
-| Source          | Sentinel-2 satellite (ESA)    |
+| Property   | Detail                                                        |
+|------------|---------------------------------------------------------------|
+| Classes    | 10 (AnnualCrop, Forest, Highway, Industrial, Residential ...) |
+| Images     | 27,000 labelled patches                                       |
+| Resolution | 64 × 64 pixels per image                                      |
+| Source     | Sentinel-2 satellite (ESA) via Kaggle                         |
 
-> Download the dataset from the 
-> [official EuroSAT repository](https://github.com/phelber/EuroSAT) 
-> and place it in `data/eurosat/`.
+> Dataset: [EuroSAT on Kaggle](https://www.kaggle.com/datasets/apollo2506/eurosat-dataset)
+> Downloaded automatically via `kagglehub` in the notebook.
+
+**Train / Val / Test split:** 19,317 / 4,139 / 4,141 (70/15/15)
 
 ---
 
 ## Models
 
 ### Baseline CNN
-A custom convolutional neural network trained from scratch, serving as the 
-experimental control.
+A custom convolutional neural network trained from scratch, serving as
+the experimental control.
 
 **Architecture:**
 - 3 convolutional blocks (Conv2d → BatchNorm → ReLU → MaxPool)
@@ -55,33 +57,62 @@ experimental control.
 - Dropout regularisation
 
 ### Fine-tuned ResNet-50
-A ResNet-50 pretrained on ImageNet, with the final classification head 
+A ResNet-50 pretrained on ImageNet, with the final classification head
 replaced and fine-tuned on EuroSAT.
 
 **Fine-tuning strategy:**
-- Stage 1: Freeze all backbone layers, train classifier head only
-- Stage 2: Unfreeze final residual blocks, train end-to-end at reduced 
-  learning rate
-- Learning rate scheduling: StepLR / CosineAnnealingLR
+- Backbone pretrained weights frozen initially; head trained first
+- Full model fine-tuned end-to-end at reduced learning rate
+- ImageNet normalisation applied (mean=[0.485, 0.456, 0.406],
+  std=[0.229, 0.224, 0.225])
 
 ---
 
 ## Results
 
-| Model            | Top-1 Accuracy | Precision | Recall | F1 Score |
-|------------------|---------------|-----------|--------|----------|
-| Baseline CNN     | XX.X%         | X.XX      | X.XX   | X.XX     |
-| ResNet-50 (FT)   | XX.X%         | X.XX      | X.XX   | X.XX     |
+### Overall Performance (Test Set — 4,141 samples)
 
-> Fill in your actual numbers before pushing.
+| Model                 | Accuracy | Precision | Recall | F1 Score |
+|-----------------------|----------|-----------|--------|----------|
+| Baseline CNN          | 87.56%   | 0.8808    | 0.8653 | 0.8695   |
+| ResNet-50 (Fine-tuned)| 91.67%   | 0.9150    | 0.9111 | 0.9127   |
+
+### Per-Class F1 Score
+
+| Class                | Baseline CNN | ResNet-50 |
+|----------------------|-------------|-----------|
+| AnnualCrop           | 0.87        | 0.93      |
+| Forest               | 0.97        | 0.98      |
+| HerbaceousVegetation | 0.81        | 0.86      |
+| Highway              | 0.76        | 0.84      |
+| Industrial           | 0.85        | 0.89      |
+| Pasture              | 0.91        | 0.93      |
+| PermanentCrop        | 0.79        | 0.83      |
+| Residential          | 0.87        | 0.92      |
+| River                | 0.89        | 0.94      |
+| SeaLake              | 0.98        | 0.99      |
+
+### Training Summary
+
+| Parameter            | Baseline CNN | ResNet-50         |
+|----------------------|-------------|-------------------|
+| Epochs               | 20          | 20                |
+| Best Val Accuracy    | 86.91%      | 90.36%            |
+| Optimiser            | Adam        | Adam              |
+| Batch Size           | 64          | 64                |
+| Random Seed          | 42          | 42                |
 
 **Key findings:**
-- Transfer learning significantly compressed the training curve, reaching 
-  comparable validation accuracy in fewer epochs
-- ResNet-50 showed sensitivity to spectrally unusual classes where 
-  ImageNet pretraining provides limited prior knowledge
-- Baseline CNN generalised more consistently on low-texture classes 
-  despite lower overall accuracy
+- ResNet-50 outperformed the baseline CNN by ~4 percentage points overall
+- Transfer learning compressed the training curve significantly —
+  ResNet-50 achieved 82.6% validation accuracy in epoch 1 alone,
+  while the baseline CNN needed 11+ epochs to reach comparable performance
+- Highway and PermanentCrop were the hardest classes for both models,
+  likely due to spectral similarity with other land cover types
+- SeaLake and Forest were consistently easy to classify (F1 > 0.97)
+  across both architectures
+- The baseline CNN showed signs of overfitting beyond epoch 14,
+  while ResNet-50 maintained more stable validation performance
 
 ---
 
@@ -106,63 +137,38 @@ The requirements.txt file contains:
 - scikit-learn
 - jupyter
 - Pillow
+- kagglehub
+- tifffile
 
-### Running the Experiments
+### Running the Notebook
 
-**1. Exploratory Data Analysis**
 ```bash
-jupyter notebook notebooks/01_eda.ipynb
+jupyter notebook EuroSAT_LandCover_CNN.ipynb
 ```
 
-**2. Train Baseline CNN**
-```bash
-jupyter notebook notebooks/02_baseline_cnn.ipynb
-```
-
-**3. Fine-tune ResNet-50**
-```bash
-jupyter notebook notebooks/03_resnet50_finetune.ipynb
-```
-
----
-
-## Experimental Setup
-
-| Parameter              | Baseline CNN | ResNet-50        |
-|------------------------|-------------|------------------|
-| Optimiser              | Adam        | Adam             |
-| Initial LR             | 1e-3        | 1e-4 (head), 1e-5 (backbone) |
-| Batch size             | 32          | 32               |
-| Epochs                 | 30          | 30               |
-| LR Scheduler           | StepLR      | CosineAnnealingLR|
-| Data augmentation      | RandomHFlip, RandomCrop | Same  |
-| Train/Val/Test split   | 70/15/15    | 70/15/15         |
-
----
-
-## Visualisations
-
-Training loss and accuracy curves, per-class confusion matrices and
-sample predictions are saved to `results/figures/` after running
-the evaluation notebooks.
+Or open directly in Google Colab — the notebook uses `kagglehub` to
+download the dataset automatically. No manual data setup required.
 
 ---
 
 ## Limitations & Future Work
 
-- EuroSAT RGB subset used; full 13-band multispectral data could improve
-  performance on spectrally ambiguous classes
-- Experiments were run on a single GPU; distributed training not explored
-- Future work: U-Net for pixel-level segmentation, Vision Transformer (ViT)
-  comparison, data augmentation with spectral jitter
+- RGB subset used; full 13-band multispectral Sentinel-2 data could
+  improve performance on spectrally ambiguous classes like Highway
+  and PermanentCrop
+- Experiments run on a single T4 GPU (Google Colab); distributed
+  training not explored
+- Future work: U-Net for pixel-level segmentation, Vision Transformer
+  (ViT) comparison, spectral augmentation strategies
 
 ---
 
 ## Academic Context
 
-This project was completed as part of the MSc Artificial Intelligence for
-Business Intelligence (with Industry) programme at the University of
-Leicester, for a module on remote sensing and deep learning applications.
+This project was completed as part of the MSc Artificial Intelligence
+for Business Intelligence (with Industry) programme at the University
+of Leicester, for a module on remote sensing and deep learning
+applications (Assignment 2).
 
 ---
 
