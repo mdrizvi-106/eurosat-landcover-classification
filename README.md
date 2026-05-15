@@ -62,9 +62,26 @@ replaced and fine-tuned on EuroSAT.
 
 **Fine-tuning strategy:**
 - Backbone pretrained weights frozen initially; head trained first
-- Full model fine-tuned end-to-end at reduced learning rate
-- ImageNet normalisation applied (mean=[0.485, 0.456, 0.406],
-  std=[0.229, 0.224, 0.225])
+- Full model fine-tuned end-to-end at reduced learning rate (1e-4)
+- EuroSAT-specific normalisation applied (mean=[0.3444, 0.3803, 0.4078],
+  std=[0.2026, 0.1365, 0.1155]) — replaces ImageNet defaults
+- L2 regularisation via `weight_decay=1e-4` to reduce overfitting
+
+---
+
+## Engineering Notes
+
+Several fixes were applied to ensure correctness and reproducibility:
+
+- **Transform leakage fix** — three separate `ImageFolder` instances
+  instantiated for train/val/test so augmentation transforms never
+  bleed into validation or test splits
+- **EuroSAT normalisation** — dataset-specific channel statistics used
+  instead of ImageNet defaults (Helber et al., 2019)
+- **Global seeding** — `SEED=42` set across Python, NumPy, PyTorch, and
+  cuDNN for fully deterministic runs
+- **MLflow experiment tracking** — all runs logged with per-epoch
+  train/val loss and accuracy; best model weights saved as artefacts
 
 ---
 
@@ -72,35 +89,35 @@ replaced and fine-tuned on EuroSAT.
 
 ### Overall Performance (Test Set — 4,141 samples)
 
-| Model                 | Accuracy | Precision | Recall | F1 Score |
-|-----------------------|----------|-----------|--------|----------|
-| Baseline CNN          | 87.56%   | 0.8808    | 0.8653 | 0.8695   |
-| ResNet-50 (Fine-tuned)| 91.67%   | 0.9150    | 0.9111 | 0.9127   |
+| Model                  | Accuracy | Precision | Recall | F1 Score |
+|------------------------|----------|-----------|--------|----------|
+| Baseline CNN           | 87.56%   | 0.8808    | 0.8653 | 0.8695   |
+| ResNet-50 (Fine-tuned) | 91.67%   | 0.9150    | 0.9111 | 0.9127   |
 
 ### Per-Class F1 Score
 
 | Class                | Baseline CNN | ResNet-50 |
-|----------------------|-------------|-----------|
-| AnnualCrop           | 0.87        | 0.93      |
-| Forest               | 0.97        | 0.98      |
-| HerbaceousVegetation | 0.81        | 0.86      |
-| Highway              | 0.76        | 0.84      |
-| Industrial           | 0.85        | 0.89      |
-| Pasture              | 0.91        | 0.93      |
-| PermanentCrop        | 0.79        | 0.83      |
-| Residential          | 0.87        | 0.92      |
-| River                | 0.89        | 0.94      |
-| SeaLake              | 0.98        | 0.99      |
+|----------------------|--------------|-----------|
+| AnnualCrop           | 0.87         | 0.93      |
+| Forest               | 0.97         | 0.98      |
+| HerbaceousVegetation | 0.81         | 0.86      |
+| Highway              | 0.76         | 0.84      |
+| Industrial           | 0.85         | 0.89      |
+| Pasture              | 0.91         | 0.93      |
+| PermanentCrop        | 0.79         | 0.83      |
+| Residential          | 0.87         | 0.92      |
+| River                | 0.89         | 0.94      |
+| SeaLake              | 0.98         | 0.99      |
 
 ### Training Summary
 
-| Parameter            | Baseline CNN | ResNet-50         |
-|----------------------|-------------|-------------------|
-| Epochs               | 20          | 20                |
-| Best Val Accuracy    | 86.91%      | 90.36%            |
-| Optimiser            | Adam        | Adam              |
-| Batch Size           | 64          | 64                |
-| Random Seed          | 42          | 42                |
+| Parameter         | Baseline CNN | ResNet-50 |
+|-------------------|--------------|-----------|
+| Epochs            | 20           | 30        |
+| Best Val Accuracy | 86.91%       | 90.36%    |
+| Optimiser         | Adam         | Adam      |
+| Batch Size        | 64           | 64        |
+| Random Seed       | 42           | 42        |
 
 **Key findings:**
 - ResNet-50 outperformed the baseline CNN by ~4 percentage points overall
@@ -120,8 +137,6 @@ replaced and fine-tuned on EuroSAT.
 
 ### Requirements
 
-Install dependencies using:
-
 ```bash
 pip install -r requirements.txt
 ```
@@ -139,6 +154,7 @@ The requirements.txt file contains:
 - Pillow
 - kagglehub
 - tifffile
+- mlflow
 
 ### Running the Notebook
 
@@ -148,6 +164,21 @@ jupyter notebook EuroSAT_LandCover_CNN.ipynb
 
 Or open directly in Google Colab — the notebook uses `kagglehub` to
 download the dataset automatically. No manual data setup required.
+
+### MLflow Experiment Tracking
+
+MLflow is configured to log all runs locally under `./mlruns`.
+
+To view the experiment dashboard after running the notebook:
+
+```bash
+mlflow ui
+```
+
+Then open `http://localhost:5000` in your browser. Each run logs:
+- Per-epoch train loss, val loss, train accuracy, val accuracy
+- Best validation accuracy
+- Final model weights as a logged artefact
 
 ---
 
@@ -166,15 +197,13 @@ download the dataset automatically. No manual data setup required.
 ## Academic Context
 
 This project was completed as part of the MSc Artificial Intelligence
-for Business Intelligence (with Industry) programme at the University
-of Leicester, for a module on remote sensing and deep learning
-applications (Assignment 2).
+for Business Intelligence programme at the University of Leicester,
+for a module on remote sensing and deep learning applications.
 
 ---
 
 ## Author
 
-**Mohamed Rizvi Shaik Abdulla**
-MSc AI for Business Intelligence, University of Leicester
-[LinkedIn](https://linkedin.com/in/sam1061) ·
-[GitHub](https://github.com/mdrizvi-106)
+**Mohamed Rizvi**  
+MSc AI for Business Intelligence, University of Leicester  
+[LinkedIn](https://linkedin.com/in/sam1061) · [GitHub](https://github.com/mdrizvi-106)
