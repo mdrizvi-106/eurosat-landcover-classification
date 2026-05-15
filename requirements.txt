@@ -7,3 +7,6 @@ seaborn
 scikit-learn
 jupyter
 Pillow
+kagglehub
+tifffile
+mlflow
